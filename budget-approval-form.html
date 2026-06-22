@@ -907,13 +907,14 @@
   <div class="success-box">
     <div class="success-icon">✅</div>
     <h2>ส่งคำขออนุมัติแล้ว</h2>
-    <p>ระบบได้บันทึกข้อมูลและจะส่งให้ผู้อนุมัติดำเนินการต่อไป</p>
+    <p>Request ID: <strong id="success-rid" style="color:var(--fa-green)"></strong></p>
+    <p style="font-size:13px;">ระบบได้บันทึกข้อมูลและส่ง email ให้ผู้อนุมัติแล้ว</p>
     <button class="btn-new" onclick="resetForm()">ส่งคำขอใหม่</button>
   </div>
 </div>
 
 <script>
-const FORM_ACTION = 'https://docs.google.com/forms/u/0/d/1HA0Gfrzma57MxbdW1eIZEFkLea4JwQGuJObh29Dpqys/formResponse';
+const APPS_SCRIPT_URL = 'YOUR_WEB_APP_URL_HERE'; // ← ใส่ URL หลัง deploy Apps Script
 
 let rowCount = 0;
 let isRevise = false;
@@ -994,7 +995,7 @@ function calcRow(id) {
 
 function calcTotal() {
   let oneTime = 0, monthly = 0, yearly = 0;
-  document.querySelectorAll('[id^="row-"]').forEach(row => {
+  document.querySelectorAll('.item-row[id^="row-"]').forEach(row => {
     const id = row.id.replace('row-', '');
     const qty = parseFloat(row.querySelector('[data-role="qty"]').value) || 0;
     const price = parseFloat(row.querySelector('[data-role="price"]').value) || 0;
@@ -1019,7 +1020,7 @@ function removeRow(id) {
 
 function serializeItems() {
   const lines = [];
-  document.querySelectorAll('[id^="row-"]').forEach((row, i) => {
+  document.querySelectorAll('.item-row[id^="row-"]').forEach((row, i) => {
     const name = row.querySelector('[data-role="name"]').value || '(ไม่มีชื่อ)';
     const qty = row.querySelector('[data-role="qty"]').value || '1';
     const type = row.querySelector('[data-role="type"]').value;
@@ -1072,7 +1073,7 @@ function validate() {
     showErr(eid, empty);
     if (empty) ok = false;
   });
-  if (document.querySelectorAll('[id^="row-"]').length === 0) {
+  if (document.querySelectorAll('.item-row[id^="row-"]').length === 0) {
     alert('กรุณาเพิ่มรายการค่าใช้จ่ายอย่างน้อย 1 รายการ');
     ok = false;
   }
@@ -1094,46 +1095,55 @@ function submitForm() {
   const onetimeTotal = document.getElementById('total-onetime').textContent;
   const monthlyTotal = document.getElementById('total-monthly').textContent;
   const yearlyTotal = document.getElementById('total-yearly').textContent;
-  const recurringTotal = `รายเดือน: ฿${monthlyTotal}/เดือน | รายปี: ฿${yearlyTotal}/ปี`;
 
-  const data = new FormData();
-  data.append('entry.235116092', document.getElementById('f-date').value);
-  data.append('entry.948777863', document.getElementById('f-fullname').value);
-  data.append('entry.2085397236', document.getElementById('f-nickname').value);
-  data.append('entry.1239645330', document.getElementById('f-position').value);
-  data.append('entry.2103132721', document.getElementById('f-team').value);
-  data.append('entry.221873364', isRevise ? 'Revise จาก request เดิม' : 'New request');
-  data.append('entry.1532516751', document.getElementById('f-req-num').value);
-  data.append('entry.1931079084', document.getElementById('f-prev-detail').value);
-  data.append('entry.555012326', document.getElementById('f-prev-amount').value);
-  data.append('entry.1615785058', document.getElementById('f-revise-reason').value);
-  data.append('entry.2108952344', document.getElementById('f-project').value);
-  data.append('entry.541212072', document.getElementById('f-expense-type').value);
-  data.append('entry.2004368295', items);
-  data.append('entry.337688267', document.getElementById('f-reason').value);
-  data.append('entry.1639502397', 'One-time');
-  data.append('entry.1641570008', document.getElementById('f-start').value);
-  data.append('entry.1566621628', document.getElementById('f-end').value);
-  data.append('entry.1707971709', onetimeTotal);
-  data.append('entry.1326716565', recurringTotal);
-  data.append('entry.2109820187', document.getElementById('f-attach1').value);
-  data.append('entry.1815894115', document.getElementById('f-approver1').value);
-  data.append('entry.521651652', document.getElementById('f-approver2').value);
-
-  const img = new Image();
-  const params = new URLSearchParams(data).toString();
-  img.src = FORM_ACTION + '?' + params;
-  img.onerror = img.onload = () => {
-    btn.disabled = false;
-    spinner.style.display = 'none';
-    document.getElementById('success-overlay').classList.add('show');
+  const payload = {
+    date: document.getElementById('f-date').value,
+    fullname: document.getElementById('f-fullname').value,
+    nickname: document.getElementById('f-nickname').value,
+    position: document.getElementById('f-position').value,
+    team: document.getElementById('f-team').value,
+    requestType: isRevise ? 'Revise จาก request เดิม' : 'New request',
+    refId: document.getElementById('f-req-num').value,
+    prevDetail: document.getElementById('f-prev-detail').value,
+    prevAmount: document.getElementById('f-prev-amount').value,
+    reviseReason: document.getElementById('f-revise-reason').value,
+    project: document.getElementById('f-project').value,
+    expenseType: document.getElementById('f-expense-type').value,
+    items: items,
+    reason: document.getElementById('f-reason').value,
+    startDate: document.getElementById('f-start').value,
+    endDate: document.getElementById('f-end').value,
+    onetimeTotal: onetimeTotal,
+    monthlyTotal: monthlyTotal,
+    yearlyTotal: yearlyTotal,
+    attach1: document.getElementById('f-attach1').value,
+    attach2: document.getElementById('f-attach2').value,
+    approver1: document.getElementById('f-approver1').value,
+    approver2: document.getElementById('f-approver2').value,
   };
 
-  setTimeout(() => {
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(result => {
     btn.disabled = false;
     spinner.style.display = 'none';
-    document.getElementById('success-overlay').classList.add('show');
-  }, 2500);
+    if (result.success) {
+      document.getElementById('success-rid').textContent = result.requestId || '';
+      document.getElementById('success-overlay').classList.add('show');
+    } else {
+      alert('เกิดข้อผิดพลาด: ' + (result.error || 'กรุณาลองใหม่'));
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    alert('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');
+    console.error(err);
+  });
 }
 
 function resetForm() {
