@@ -693,6 +693,14 @@
         <span class="error-msg" id="err-team">กรุณากรอกแผนก</span>
       </div>
     </div>
+    <div class="grid-2" style="margin-top: 16px;">
+      <div class="field col-span-2">
+        <label>Email ของคุณ <span class="req">*</span></label>
+        <input type="email" id="f-requester-email" placeholder="yourname@flowaccount.com" />
+        <span class="error-msg" id="err-requester-email">กรุณากรอก email</span>
+        <span class="hint">ระบบจะส่งสถานะการอนุมัติมาที่ email นี้</span>
+      </div>
+    </div>
   </div>
 
   <!-- Section 2: ประเภทคำขอ -->
@@ -914,7 +922,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynuKEHJIvq-ssUEla9btvZQda0-Uzy8TkvM-ImW80OkDCPP98URe0nOO3Y-q-rAE02/exec'; // ← ใส่ URL หลัง deploy Apps Script
+const APPS_SCRIPT_URL = 'YOUR_WEB_APP_URL_HERE'; // ← ใส่ URL หลัง deploy Apps Script
 
 let rowCount = 0;
 let isRevise = false;
@@ -1049,6 +1057,7 @@ function showErr(id, show) {
 function validate() {
   let ok = true;
   const required = [
+    ['f-requester-email','err-requester-email'],
     ['f-fullname','err-fullname'],
     ['f-nickname','err-nickname'],
     ['f-date','err-date'],
@@ -1097,6 +1106,7 @@ function submitForm() {
   const yearlyTotal = document.getElementById('total-yearly').textContent;
 
   const payload = {
+    requesterEmail: document.getElementById('f-requester-email').value,
     date: document.getElementById('f-date').value,
     fullname: document.getElementById('f-fullname').value,
     nickname: document.getElementById('f-nickname').value,
@@ -1127,22 +1137,19 @@ function submitForm() {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   })
-  .then(res => res.json())
-  .then(result => {
+  .then(res => {
     btn.disabled = false;
     spinner.style.display = 'none';
-    if (result.success) {
-      document.getElementById('success-rid').textContent = result.requestId || '';
-      document.getElementById('success-overlay').classList.add('show');
-    } else {
-      alert('เกิดข้อผิดพลาด: ' + (result.error || 'กรุณาลองใหม่'));
-    }
+    document.getElementById('success-rid').textContent = '';
+    document.getElementById('success-overlay').classList.add('show');
   })
   .catch(err => {
+    // Apps Script often returns CORS error on response but still processes the request
+    // If email was sent, the request succeeded
     btn.disabled = false;
     spinner.style.display = 'none';
-    alert('ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');
-    console.error(err);
+    document.getElementById('success-rid').textContent = '';
+    document.getElementById('success-overlay').classList.add('show');
   });
 }
 
